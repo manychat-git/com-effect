@@ -1,12 +1,20 @@
 class CircularGallery {
     constructor(canvas) {
         this.canvas = canvas;
-        this.gl = canvas.getContext('webgl');
+        this.gl = canvas.getContext('webgl', {
+            preserveDrawingBuffer: true,
+            alpha: false
+        });
         if (!this.gl) {
             throw new Error('WebGL not supported');
         }
 
         this.currentImage = null;
+        this.isAnimating = true;
+        this.animationFrameId = null;
+        this.startTime = performance.now();
+        this.pausedTime = 0;  // Сохраняем время, когда поставили на паузу
+        this.totalPausedTime = 0;  // Общее время на паузе
         this.loadImage();
         this.initWebGL();
     }
@@ -117,6 +125,8 @@ class CircularGallery {
     }
 
     render(time) {
+        if (!this.isAnimating) return;
+
         this.resizeCanvas();
 
         // Clear canvas
@@ -128,8 +138,9 @@ class CircularGallery {
         // Use shader program
         this.gl.useProgram(this.program);
 
-        // Set uniforms
-        this.gl.uniform1f(this.timeLocation, (time - this.startTime) / 1000);
+        // Set uniforms с учётом общего времени на паузе
+        const currentTime = (time - this.startTime - this.totalPausedTime) / 1000;
+        this.gl.uniform1f(this.timeLocation, currentTime);
         this.gl.uniform2f(this.resolutionLocation, this.gl.canvas.width, this.gl.canvas.height);
 
         // Set up position attribute
@@ -148,11 +159,39 @@ class CircularGallery {
 
         // Draw
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
+        // Запрашиваем следующий кадр только если анимация активна
+        if (this.isAnimating) {
+            this.animationFrameId = requestAnimationFrame((t) => this.render(t));
+        }
     }
 
     animate(time) {
-        this.render(time);
-        requestAnimationFrame(this.animate.bind(this));
+        if (this.isAnimating) {
+            this.render(time);
+        }
+    }
+
+    toggleAnimation(isPaused) {
+        this.isAnimating = !isPaused;
+        
+        if (this.isAnimating) {
+            // Возобновляем анимацию
+            const currentTime = performance.now();
+            if (this.pausedTime) {
+                // Добавляем время, проведённое на паузе
+                this.totalPausedTime += currentTime - this.pausedTime;
+                this.pausedTime = 0;
+            }
+            this.render(currentTime);
+        } else {
+            // Ставим на паузу
+            this.pausedTime = performance.now();
+            if (this.animationFrameId) {
+                cancelAnimationFrame(this.animationFrameId);
+                this.animationFrameId = null;
+            }
+        }
     }
 }
 
