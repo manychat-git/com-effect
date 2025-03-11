@@ -15,8 +15,13 @@ class CircularGallery {
         this.startTime = performance.now();
         this.pausedTime = 0;  // Сохраняем время, когда поставили на паузу
         this.totalPausedTime = 0;  // Общее время на паузе
-        this.loadImage();
-        this.initWebGL();
+        this.fishEyeLevel = 0.8; // Добавляем начальное значение
+        
+        // Сначала инициализируем WebGL
+        this.initWebGL().then(() => {
+            // После инициализации WebGL загружаем изображение
+            this.loadImage();
+        });
     }
 
     updateImage(newImage) {
@@ -35,7 +40,7 @@ class CircularGallery {
             };
         });
 
-        // Start animation once image is loaded
+        // Только после загрузки изображения начинаем анимацию
         this.startTime = performance.now();
         this.animate();
     }
@@ -103,6 +108,7 @@ class CircularGallery {
         // Get uniform locations
         this.timeLocation = this.gl.getUniformLocation(this.program, 'uTime');
         this.resolutionLocation = this.gl.getUniformLocation(this.program, 'uResolution');
+        this.fishEyeLevelLocation = this.gl.getUniformLocation(this.program, 'uFishEyeLevel');
 
         // Create and set up texture
         this.texture = this.gl.createTexture();
@@ -125,15 +131,13 @@ class CircularGallery {
     }
 
     render(time) {
-        if (!this.isAnimating) return;
+        if (!this.isAnimating || !this.program || !this.currentImage) return;
 
         this.resizeCanvas();
 
         // Clear canvas
         this.gl.clearColor(0, 0, 0, 1);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-
-        if (!this.currentImage) return;
 
         // Use shader program
         this.gl.useProgram(this.program);
@@ -142,6 +146,7 @@ class CircularGallery {
         const currentTime = (time - this.startTime - this.totalPausedTime) / 1000;
         this.gl.uniform1f(this.timeLocation, currentTime);
         this.gl.uniform2f(this.resolutionLocation, this.gl.canvas.width, this.gl.canvas.height);
+        this.gl.uniform1f(this.fishEyeLevelLocation, this.fishEyeLevel); // Используем текущее значение
 
         // Set up position attribute
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
@@ -192,6 +197,10 @@ class CircularGallery {
                 this.animationFrameId = null;
             }
         }
+    }
+
+    updateFishEyeLevel(level) {
+        this.fishEyeLevel = level;
     }
 }
 

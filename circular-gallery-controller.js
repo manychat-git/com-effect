@@ -2,7 +2,7 @@ class GalleryController {
     constructor(galleryInstance) {
         this.gallery = galleryInstance;
         this.canvas = document.getElementById('gallery');
-        this.isExpanded = false;
+        this.isExpanded = true;
         this.isPaused = false;
         this.supportedVideoType = this.getSupportedVideoType();
         this.createUI();
@@ -51,7 +51,7 @@ class GalleryController {
                         rgba(15, 15, 15, 0.2) 0px 9px 24px;
             z-index: 1000;
             --expanded-width: 280px;
-            --expanded-height: 280px;
+            --expanded-height: 360px;
             --collapsed-size: 36px;
             transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                        height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -84,7 +84,7 @@ class GalleryController {
             cursor: pointer;
             z-index: 2;
         `;
-        settingsButton.innerHTML = '⚙️';
+        settingsButton.innerHTML = this.isExpanded ? '➖' : '⚙️';
         
         // Контейнер для содержимого
         const content = document.createElement('div');
@@ -119,16 +119,113 @@ class GalleryController {
             margin-bottom: 12px;
         `;
 
+        // Добавляем слайдер для fishEyeLevel
+        const sliderContainer = document.createElement('div');
+        sliderContainer.style.cssText = `
+            grid-column: 1 / -1;
+            padding: 8px 0;
+            margin: 4px 0;
+        `;
+
+        const sliderLabel = document.createElement('div');
+        sliderLabel.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #37352F;
+            letter-spacing: -0.01em;
+        `;
+        sliderLabel.innerHTML = '<span>Fish-eye Level</span><span id="fishEyeValue" style="font-variant-numeric: tabular-nums; color: rgba(55, 53, 47, 0.65);">0.8</span>';
+
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = '0.8';
+        slider.max = '3';
+        slider.step = '0.1';
+        slider.value = '0.8';
+        slider.style.cssText = `
+            width: 100%;
+            margin: 0;
+            cursor: pointer;
+            -webkit-appearance: none;
+            background: transparent;
+        `;
+
+        // Добавляем стили для слайдера через отдельные правила
+        const sliderStyles = document.createElement('style');
+        sliderStyles.textContent = `
+            input[type="range"]::-webkit-slider-runnable-track {
+                width: 100%;
+                height: 6px;
+                background: rgba(55, 53, 47, 0.16);
+                border-radius: 15px;
+            }
+            
+            input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                height: 16px;
+                width: 16px;
+                border-radius: 50%;
+                background: black;
+                margin-top: -5.5px;
+                transition: background 0.2s ease;
+            }
+            
+            input[type="range"]::-webkit-slider-thumb:hover {
+                background: black;
+            }
+            
+            input[type="range"]:focus {
+                outline: none;
+            }
+
+            /* Firefox */
+            input[type="range"]::-moz-range-track {
+                width: 100%;
+                height: 3px;
+                background: rgba(55, 53, 47, 0.16);
+                border-radius: 1.5px;
+            }
+            
+            input[type="range"]::-moz-range-thumb {
+                height: 14px;
+                width: 14px;
+                border: none;
+                border-radius: 50%;
+                background: rgb(55, 53, 47);
+                transition: background 0.2s ease;
+            }
+            
+            input[type="range"]::-moz-range-thumb:hover {
+                background: rgba(55, 53, 47, 0.8);
+            }
+        `;
+        document.head.appendChild(sliderStyles);
+
+        slider.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            document.getElementById('fishEyeValue').textContent = value.toFixed(1);
+            this.gallery.updateFishEyeLevel(value);
+        });
+
+        sliderContainer.appendChild(sliderLabel);
+        sliderContainer.appendChild(slider);
+
         // Создаем кнопки управления
-        const saveButton = this.createControlButton('💾', 'Save Image');
+        const resetButton = this.createControlButton('↺', 'Reset Image');
         const pauseButton = this.createControlButton('⏸️', 'Pause Animation');
+        const saveButton = this.createControlButton('💾', 'Save Image');
         const recordButton = this.createControlButton('🔴', 'Start Recording');
-        const resetButton = this.createControlButton('↺', 'Reset to Default');
 
         // Добавляем обработчики
         settingsButton.addEventListener('click', (e) => {
             e.stopPropagation();
             this.isExpanded = !this.isExpanded;
+            
+            // Обновляем иконку
+            settingsButton.innerHTML = this.isExpanded ? '➖' : '⚙️';
             
             // Анимируем контейнер одновременно
             requestAnimationFrame(() => {
@@ -210,10 +307,11 @@ class GalleryController {
         });
 
         // Собираем UI
-        controlsContainer.appendChild(saveButton);
-        controlsContainer.appendChild(pauseButton);
-        controlsContainer.appendChild(recordButton);
+        controlsContainer.appendChild(sliderContainer);
         controlsContainer.appendChild(resetButton);
+        controlsContainer.appendChild(pauseButton);
+        controlsContainer.appendChild(saveButton);
+        controlsContainer.appendChild(recordButton);
 
         content.appendChild(dropZone);
         content.appendChild(controlsContainer);
