@@ -28,6 +28,9 @@ class CircularGallery {
         this.currentImage = newImage;
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, newImage);
+        if (!this.isAnimating) {
+            this.updateEffects(); // Обновляем эффекты при смене изображения даже на паузе
+        }
     }
 
     async loadImage() {
@@ -130,8 +133,8 @@ class CircularGallery {
         }
     }
 
-    render(time) {
-        if (!this.isAnimating || !this.program || !this.currentImage) return;
+    updateEffects() {
+        if (!this.program || !this.currentImage) return;
 
         this.resizeCanvas();
 
@@ -143,10 +146,10 @@ class CircularGallery {
         this.gl.useProgram(this.program);
 
         // Set uniforms с учётом общего времени на паузе
-        const currentTime = (time - this.startTime - this.totalPausedTime) / 1000;
+        const currentTime = (performance.now() - this.startTime - this.totalPausedTime) / 1000;
         this.gl.uniform1f(this.timeLocation, currentTime);
         this.gl.uniform2f(this.resolutionLocation, this.gl.canvas.width, this.gl.canvas.height);
-        this.gl.uniform1f(this.fishEyeLevelLocation, this.fishEyeLevel); // Используем текущее значение
+        this.gl.uniform1f(this.fishEyeLevelLocation, this.fishEyeLevel);
 
         // Set up position attribute
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
@@ -164,11 +167,12 @@ class CircularGallery {
 
         // Draw
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+    }
 
-        // Запрашиваем следующий кадр только если анимация активна
-        if (this.isAnimating) {
-            this.animationFrameId = requestAnimationFrame((t) => this.render(t));
-        }
+    render(time) {
+        if (!this.isAnimating) return;
+        this.updateEffects();
+        this.animationFrameId = requestAnimationFrame((t) => this.render(t));
     }
 
     animate(time) {
@@ -201,6 +205,9 @@ class CircularGallery {
 
     updateFishEyeLevel(level) {
         this.fishEyeLevel = level;
+        if (!this.isAnimating) {
+            this.updateEffects(); // Обновляем эффекты даже когда анимация на паузе
+        }
     }
 }
 
