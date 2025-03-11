@@ -5,8 +5,45 @@ class GalleryController {
         this.isExpanded = true;
         this.isPaused = false;
         this.supportedVideoType = this.getSupportedVideoType();
+        
+        // Настраиваем размер canvas с учетом DPR
+        this.setupCanvasSize();
+        
         this.createUI();
         this.setupEventListeners();
+    }
+
+    setupCanvasSize() {
+        const dpr = window.devicePixelRatio || 1;
+        const observer = new ResizeObserver(entries => {
+            const entry = entries[0];
+            let width, height;
+            
+            // Получаем размер с учетом DPR
+            if (entry.devicePixelContentBoxSize) {
+                // Современные браузеры
+                width = entry.devicePixelContentBoxSize[0].inlineSize;
+                height = entry.devicePixelContentBoxSize[0].blockSize;
+            } else {
+                // Fallback для старых браузеров
+                const displayWidth = entry.contentRect.width;
+                const displayHeight = entry.contentRect.height;
+                width = Math.round(displayWidth * dpr);
+                height = Math.round(displayHeight * dpr);
+            }
+            
+            // Обновляем размеры canvas
+            if (this.canvas.width !== width || this.canvas.height !== height) {
+                this.canvas.width = width;
+                this.canvas.height = height;
+                // Обновляем viewport WebGL
+                if (this.gallery.gl) {
+                    this.gallery.gl.viewport(0, 0, width, height);
+                }
+            }
+        });
+        
+        observer.observe(this.canvas);
     }
 
     getSupportedVideoType() {
@@ -453,7 +490,22 @@ class GalleryController {
 
     saveCanvasAsImage() {
         const canvas = document.getElementById('gallery');
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Создаем временный canvas с учетом DPR
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width * dpr;
+        tempCanvas.height = canvas.height * dpr;
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        // Масштабируем контекст
+        tempCtx.scale(dpr, dpr);
+        
+        // Копируем содержимое оригинального canvas
+        tempCtx.drawImage(canvas, 0, 0);
+        
+        // Сохраняем с высоким качеством
+        const dataUrl = tempCanvas.toDataURL('image/png', 1.0);
         
         // Создаем ссылку для скачивания
         const link = document.createElement('a');
