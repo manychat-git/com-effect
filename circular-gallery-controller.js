@@ -2,7 +2,7 @@ class GalleryController {
     constructor(galleryInstance) {
         this.gallery = galleryInstance;
         this.canvas = document.getElementById('gallery');
-        this.isExpanded = true;
+        this.isExpanded = false;
         this.isPaused = false;
         this.supportedVideoType = this.getSupportedVideoType();
         this.createUI();
@@ -44,246 +44,258 @@ class GalleryController {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px;
-            border-radius: 12px;
-            color: #37352F;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            z-index: 1000;
+            background: white;
+            border-radius: 6px;
             box-shadow: rgba(15, 15, 15, 0.05) 0px 0px 0px 1px, 
                         rgba(15, 15, 15, 0.1) 0px 3px 6px, 
                         rgba(15, 15, 15, 0.2) 0px 9px 24px;
-            transition: all 0.3s ease;
-            min-width: 260px;
+            z-index: 1000;
+            --expanded-width: 280px;
+            --expanded-height: 280px;
+            --collapsed-size: 36px;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                       height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: ${this.isExpanded ? 'var(--expanded-width)' : 'var(--collapsed-size)'};
+            height: ${this.isExpanded ? 'var(--expanded-height)' : 'var(--collapsed-size)'};
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            transform-origin: top right;
         `;
 
-        // Создаем заголовок
+        // Создаем header с кнопкой настроек
         const header = document.createElement('div');
         header.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: ${this.isExpanded ? '15px' : '0'};
-            cursor: pointer;
-            user-select: none;
-            transition: margin 0.3s ease;
+            position: relative;
+            height: 36px;
         `;
 
-        const title = document.createElement('div');
-        title.style.cssText = `
-            font-weight: 500;
-            font-size: 14px;
-            color: #37352F;
-        `;
-        title.textContent = 'Image Controls';
-
-        const toggleButton = document.createElement('div');
-        toggleButton.style.cssText = `
-            width: 24px;
-            height: 24px;
+        const settingsButton = document.createElement('div');
+        settingsButton.style.cssText = `
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 4px;
-            color: #37352F;
-            transition: all 0.3s ease;
-            font-size: 18px;
+            font-size: 20px;
+            transition: background 0.2s ease;
+            cursor: pointer;
+            z-index: 2;
         `;
-        toggleButton.innerHTML = '−';
-
-        toggleButton.addEventListener('mouseover', () => {
-            toggleButton.style.background = 'rgba(55, 53, 47, 0.08)';
-        });
-        toggleButton.addEventListener('mouseout', () => {
-            toggleButton.style.background = 'transparent';
-        });
-
+        settingsButton.innerHTML = '⚙️';
+        
         // Контейнер для содержимого
         const content = document.createElement('div');
         content.style.cssText = `
-            transition: all 0.3s ease;
-            overflow: hidden;
-            opacity: 1;
+            padding: ${this.isExpanded ? '8px 16px 16px' : '0'};
+            padding-top: 0;
+            opacity: ${this.isExpanded ? '1' : '0'};
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 8px;
         `;
 
         // Создаем зону для дропа файлов
         const dropZone = document.createElement('div');
         dropZone.style.cssText = `
-            border: 2px dashed rgba(55, 53, 47, 0.2);
-            border-radius: 8px;
-            padding: 20px;
+            border: 1px dashed rgba(55, 53, 47, 0.2);
+            border-radius: 6px;
+            padding: 16px;
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             cursor: pointer;
             transition: all 0.2s ease;
+            background: rgba(55, 53, 47, 0.02);
         `;
-        dropZone.innerHTML = '<div style="font-size: 24px; margin-bottom: 10px;">📁</div>Drop image here<br>or click to upload';
+        dropZone.innerHTML = '<div style="font-size: 24px; margin-bottom: 8px;">📁</div>Drop image here<br>or click to upload';
 
-        // Создаем кнопки
-        const buttonsContainer = document.createElement('div');
-        buttonsContainer.style.cssText = `
-            display: flex;
-            flex-direction: column;
+        // Создаем контейнер для кнопок управления
+        const controlsContainer = document.createElement('div');
+        controlsContainer.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 8px;
+            margin-bottom: 12px;
         `;
 
-        // Кнопка Reset
-        const resetButton = document.createElement('button');
-        resetButton.style.cssText = `
-            width: 100%;
-            padding: 8px 12px;
-            background: transparent;
-            border: 1px solid rgba(55, 53, 47, 0.2);
-            border-radius: 4px;
-            color: #37352F;
-            font-family: inherit;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        `;
-        resetButton.innerHTML = '↺ Reset to Default';
-        
-        // Кнопка Save
-        const saveButton = document.createElement('button');
-        saveButton.style.cssText = resetButton.style.cssText;
-        saveButton.innerHTML = '💾 Save Image';
+        // Создаем кнопки управления
+        const saveButton = this.createControlButton('💾', 'Save Image');
+        const pauseButton = this.createControlButton('⏸️', 'Pause Animation');
+        const recordButton = this.createControlButton('🔴', 'Start Recording');
+        const resetButton = this.createControlButton('↺', 'Reset to Default');
 
-        // Кнопка Pause
-        const pauseButton = document.createElement('button');
-        pauseButton.style.cssText = resetButton.style.cssText;
-        pauseButton.innerHTML = '⏸️ Pause Animation';
-
-        // Кнопка Record
-        const recordButton = document.createElement('button');
-        recordButton.style.cssText = resetButton.style.cssText;
-        recordButton.innerHTML = '🔴 Start Recording';
-
-        // Создаем индикатор записи
-        const recordingIndicator = document.createElement('div');
-        recordingIndicator.style.cssText = `
-            display: none;
-            font-size: 12px;
-            color: #FF3B30;
-            text-align: center;
-            margin-top: 8px;
-        `;
-        recordingIndicator.textContent = 'Recording: 00:00';
-
-        // Добавляем эффекты при наведении для всех кнопок
-        [resetButton, saveButton, pauseButton, recordButton].forEach(button => {
-            button.addEventListener('mouseover', () => {
-                button.style.background = 'rgba(55, 53, 47, 0.08)';
-            });
-            button.addEventListener('mouseout', () => {
-                button.style.background = 'transparent';
+        // Добавляем обработчики
+        settingsButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.isExpanded = !this.isExpanded;
+            
+            // Анимируем контейнер одновременно
+            requestAnimationFrame(() => {
+                container.style.width = this.isExpanded ? 'var(--expanded-width)' : 'var(--collapsed-size)';
+                container.style.height = this.isExpanded ? 'var(--expanded-height)' : 'var(--collapsed-size)';
+                
+                // Анимируем контент
+                content.style.opacity = this.isExpanded ? '1' : '0';
+                content.style.padding = this.isExpanded ? '8px 16px 16px' : '0';
+                content.style.paddingTop = '0';
             });
         });
 
-        // Эффекты при наведении на зону дропа
-        dropZone.addEventListener('mouseover', () => {
-            dropZone.style.borderColor = 'rgba(55, 53, 47, 0.4)';
-            dropZone.style.background = 'rgba(55, 53, 47, 0.03)';
-        });
-        dropZone.addEventListener('mouseout', () => {
-            dropZone.style.borderColor = 'rgba(55, 53, 47, 0.2)';
-            dropZone.style.background = 'transparent';
+        // Удаляем обработчик клика по документу, который сворачивал панель
+        // Предотвращаем закрытие при клике внутри контента
+        content.addEventListener('click', (e) => {
+            e.stopPropagation();
         });
 
-        // Создаем скрытый input для файла
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/*';
-        fileInput.style.display = 'none';
-
-        // Обработчики для drag & drop
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.style.borderColor = 'rgba(55, 53, 47, 0.6)';
-            dropZone.style.background = 'rgba(55, 53, 47, 0.06)';
-        });
-
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropZone.style.borderColor = 'rgba(55, 53, 47, 0.2)';
-            dropZone.style.background = 'transparent';
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('image/')) {
-                this.handleFile(file);
-            }
-            dropZone.style.borderColor = 'rgba(55, 53, 47, 0.2)';
-            dropZone.style.background = 'transparent';
-        });
-
-        // Обработчик клика по зоне дропа
-        dropZone.addEventListener('click', () => fileInput.click());
-
-        // Обработчик выбора файла
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                this.handleFile(file);
-            }
-        });
-
-        // Обработчики для кнопок
-        resetButton.addEventListener('click', () => {
-            this.resetToDefaultImage();
-        });
-
-        saveButton.addEventListener('click', () => {
-            this.saveCanvasAsImage();
-        });
-
+        // Добавляем обработчики для кнопок
+        resetButton.addEventListener('click', () => this.resetToDefaultImage());
+        saveButton.addEventListener('click', () => this.saveCanvasAsImage());
         pauseButton.addEventListener('click', () => {
             this.isPaused = !this.isPaused;
             if (this.gallery.toggleAnimation) {
                 this.gallery.toggleAnimation(this.isPaused);
             }
-            pauseButton.innerHTML = this.isPaused ? '▶️ Resume Animation' : '⏸️ Pause Animation';
+            pauseButton.querySelector('.button-icon').textContent = this.isPaused ? '▶️' : '⏸️';
+            pauseButton.querySelector('.tooltip').textContent = this.isPaused ? 'Resume Animation' : 'Pause Animation';
         });
-
-        // Добавляем обработчик для записи
         recordButton.addEventListener('click', () => {
-            this.handleRecording(recordButton, recordingIndicator);
+            if (!this.isRecording) {
+                this.isRecording = true;
+                recordButton.querySelector('.button-icon').textContent = '⬛';
+                recordButton.querySelector('.tooltip').textContent = 'Stop Recording';
+                this.startRecording();
+            } else {
+                this.isRecording = false;
+                recordButton.querySelector('.button-icon').textContent = '🔴';
+                recordButton.querySelector('.tooltip').textContent = 'Start Recording';
+                if (this.activeMediaRecorder && this.activeMediaRecorder.state === 'recording') {
+                    this.activeMediaRecorder.stop();
+                }
+            }
         });
 
-        // Обработчик сворачивания/разворачивания
-        header.addEventListener('click', () => {
-            this.isExpanded = !this.isExpanded;
-            content.style.height = this.isExpanded ? content.scrollHeight + 'px' : '0';
-            content.style.opacity = this.isExpanded ? '1' : '0';
-            content.style.marginTop = this.isExpanded ? '0' : '-10px';
-            header.style.marginBottom = this.isExpanded ? '15px' : '0';
-            toggleButton.innerHTML = this.isExpanded ? '−' : '+';
+        // Добавляем обработчики для drag & drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Предотвращаем сворачивание панели
+            dropZone.style.borderColor = 'rgba(55, 53, 47, 0.4)';
+            dropZone.style.background = 'rgba(55, 53, 47, 0.05)';
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Предотвращаем сворачивание панели
+            dropZone.style.borderColor = 'rgba(55, 53, 47, 0.2)';
+            dropZone.style.background = 'rgba(55, 53, 47, 0.02)';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Предотвращаем сворачивание панели
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                this.handleFile(file);
+            }
+            dropZone.style.borderColor = 'rgba(55, 53, 47, 0.2)';
+            dropZone.style.background = 'rgba(55, 53, 47, 0.02)';
+        });
+
+        // Добавляем обработчик клика по зоне дропа
+        dropZone.addEventListener('click', (e) => {
+            e.stopPropagation(); // Предотвращаем сворачивание панели
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.style.display = 'none';
+            
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    this.handleFile(file);
+                }
+            });
+            
+            document.body.appendChild(fileInput);
+            fileInput.click();
+            document.body.removeChild(fileInput);
         });
 
         // Собираем UI
-        header.appendChild(title);
-        header.appendChild(toggleButton);
-        buttonsContainer.appendChild(resetButton);
-        buttonsContainer.appendChild(saveButton);
-        buttonsContainer.appendChild(pauseButton);
-        buttonsContainer.appendChild(recordButton);
-        buttonsContainer.appendChild(recordingIndicator);
+        controlsContainer.appendChild(saveButton);
+        controlsContainer.appendChild(pauseButton);
+        controlsContainer.appendChild(recordButton);
+        controlsContainer.appendChild(resetButton);
+
         content.appendChild(dropZone);
-        content.appendChild(buttonsContainer);
-        content.appendChild(fileInput);
+        content.appendChild(controlsContainer);
+
+        header.appendChild(settingsButton);
         container.appendChild(header);
         container.appendChild(content);
         document.body.appendChild(container);
+    }
 
-        // Устанавливаем начальную высоту контента
-        requestAnimationFrame(() => {
-            content.style.height = content.scrollHeight + 'px';
+    createControlButton(icon, tooltip) {
+        const button = document.createElement('button');
+        button.style.cssText = `
+            width: 100%;
+            height: 36px;
+            padding: 0;
+            background: transparent;
+            border: 1px solid rgba(55, 53, 47, 0.2);
+            border-radius: 6px;
+            color: #37352F;
+            font-family: inherit;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        `;
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'button-icon';
+        iconSpan.textContent = icon;
+        
+        const tooltipDiv = document.createElement('div');
+        tooltipDiv.className = 'tooltip';
+        tooltipDiv.style.cssText = `
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(55, 53, 47, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            opacity: 0;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 1001;
+        `;
+        tooltipDiv.textContent = tooltip;
+
+        button.appendChild(iconSpan);
+        button.appendChild(tooltipDiv);
+
+        button.addEventListener('mouseover', () => {
+            button.style.background = 'rgba(55, 53, 47, 0.08)';
+            tooltipDiv.style.opacity = '1';
+            tooltipDiv.style.top = '-35px';
         });
+
+        button.addEventListener('mouseout', () => {
+            button.style.background = 'transparent';
+            tooltipDiv.style.opacity = '0';
+            tooltipDiv.style.top = '-30px';
+        });
+
+        return button;
     }
 
     createButton(text) {
@@ -355,15 +367,7 @@ class GalleryController {
 
     saveCanvasAsImage() {
         const canvas = document.getElementById('gallery');
-        
-        // Временно скрываем контрольную панель
-        document.querySelector('.gallery-controls')?.style.setProperty('display', 'none');
-        
-        // Делаем скриншот
         const dataUrl = canvas.toDataURL('image/png', 1.0);
-        
-        // Показываем контрольную панель обратно
-        document.querySelector('.gallery-controls')?.style.setProperty('display', '');
         
         // Создаем ссылку для скачивания
         const link = document.createElement('a');
@@ -514,8 +518,7 @@ class GalleryController {
         URL.revokeObjectURL(url);
     }
 
-    // Update the handleRecording method to use the new streamData object
-    async handleRecording(recordButton, recordingIndicator) {
+    async handleRecording(recordButton) {
         if (!this.supportedVideoType) {
             alert('Sorry, video recording is not supported in your browser');
             return;
@@ -529,24 +532,12 @@ class GalleryController {
                     throw new Error('Failed to initialize canvas capture');
                 }
 
-                this.isRecording = true;
-                this.recordingStartTime = Date.now();
-                recordButton.innerHTML = '⬛ Stop Recording';
-                recordingIndicator.style.display = 'block';
-
-                this.recordingTimer = setInterval(() => {
-                    const duration = Math.floor((Date.now() - this.recordingStartTime) / 1000);
-                    const minutes = Math.floor(duration / 60).toString().padStart(2, '0');
-                    const seconds = (duration % 60).toString().padStart(2, '0');
-                    recordingIndicator.textContent = `Recording: ${minutes}:${seconds}`;
-                }, 1000);
-
                 this.recordingPromise = this.startRecording(streamData);
                 
             } catch (error) {
                 console.error('Recording error:', error);
                 alert('Failed to start recording: ' + error.message);
-                this.stopRecording(recordButton, recordingIndicator);
+                this.stopRecording(recordButton);
             }
         } else {
             try {
@@ -558,23 +549,21 @@ class GalleryController {
             } catch (error) {
                 console.error('Error stopping recording:', error);
                 alert('Failed to stop recording: ' + error.message);
-            } finally {
-                this.stopRecording(recordButton, recordingIndicator);
             }
+            // Не сворачиваем панель после остановки записи
         }
     }
 
-    stopRecording(recordButton, recordingIndicator) {
+    stopRecording(recordButton) {
         this.isRecording = false;
         this.activeMediaRecorder = null;
         this.recordedChunks = [];
         this.recordingPromise = null;
-        recordButton.innerHTML = '🔴 Start Recording';
-        recordingIndicator.style.display = 'none';
         
-        if (this.recordingTimer) {
-            clearInterval(this.recordingTimer);
-            this.recordingTimer = null;
+        // Обновляем только иконку и подсказку
+        if (recordButton) {
+            recordButton.querySelector('.button-icon').textContent = '⏺️';
+            recordButton.querySelector('.tooltip').textContent = 'Start Recording';
         }
     }
 } 
