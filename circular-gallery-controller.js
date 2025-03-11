@@ -160,19 +160,7 @@ class GalleryController {
             pauseButton.querySelector('.tooltip').textContent = this.isPaused ? 'Resume Animation' : 'Pause Animation';
         });
         recordButton.addEventListener('click', () => {
-            if (!this.isRecording) {
-                this.isRecording = true;
-                recordButton.querySelector('.button-icon').textContent = '⬛';
-                recordButton.querySelector('.tooltip').textContent = 'Stop Recording';
-                this.startRecording();
-            } else {
-                this.isRecording = false;
-                recordButton.querySelector('.button-icon').textContent = '🔴';
-                recordButton.querySelector('.tooltip').textContent = 'Start Recording';
-                if (this.activeMediaRecorder && this.activeMediaRecorder.state === 'recording') {
-                    this.activeMediaRecorder.stop();
-                }
-            }
+            this.handleRecording(recordButton);
         });
 
         // Добавляем обработчики для drag & drop
@@ -526,6 +514,11 @@ class GalleryController {
 
         if (!this.isRecording) {
             try {
+                // Начинаем запись
+                this.isRecording = true;
+                recordButton.querySelector('.button-icon').textContent = '⬛';
+                recordButton.querySelector('.tooltip').textContent = 'Stop Recording';
+
                 const streamData = await this.initializeScreenCapture();
                 
                 if (!streamData.stream) {
@@ -541,6 +534,11 @@ class GalleryController {
             }
         } else {
             try {
+                // Останавливаем запись
+                this.isRecording = false;
+                recordButton.querySelector('.button-icon').textContent = '🔴';
+                recordButton.querySelector('.tooltip').textContent = 'Start Recording';
+
                 if (this.activeMediaRecorder && this.activeMediaRecorder.state === 'recording') {
                     this.activeMediaRecorder.stop();
                     const blob = await this.recordingPromise;
@@ -550,7 +548,6 @@ class GalleryController {
                 console.error('Error stopping recording:', error);
                 alert('Failed to stop recording: ' + error.message);
             }
-            // Не сворачиваем панель после остановки записи
         }
     }
 
